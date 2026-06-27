@@ -1,0 +1,25 @@
+# OS clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor artifacts
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# DST mod compiler output (generated — do not commit)
+*.zip
+anim/
+
+# Future custom art sources (large files — use Git LFS or keep local)
+art_source/
+*.psd
+*.aseprite
+*.kra
+
+# Workshop upload cache
+workshop_id.txt
+workshop_upload.log

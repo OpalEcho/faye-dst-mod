@@ -1,0 +1,75 @@
+-- faye_strings.lua
+-- scripts/strings/faye_strings.lua
+-- ============================================================
+-- FAYE - Extra strings and overrides
+-- Loaded via modimport("scripts/strings/faye_strings.lua") in modmain.lua
+-- (Currently not loaded automatically — modmain.lua sets most strings inline.
+--  Uncomment the modimport line in modmain.lua to enable this file.)
+--
+-- Use this file for: expansion of item strings, lore entries,
+-- Faye-specific examine strings for base-game items that override
+-- the generic text in speech_faye.lua, etc.
+-- ============================================================
+
+-- ─── FAYE-SPECIFIC ITEM EXAMINE OVERRIDES ────────────────────────────────────
+-- These are shown only when FAYE examines these items.
+-- speech_faye.lua already handles most items, but you can put
+-- additional overrides here if the lists get long.
+
+-- Example override (already in speech_faye.lua but shown here as template):
+-- GLOBAL.STRINGS.CHARACTERS.FAYE.DESCRIBE.FIREPIT = {
+--     GENERIC = "Hiss... it buuurns!",
+--     EMBERS  = "Good. Let it die.",
+--     COLD    = "Cold ash. As it should be.",
+--     LIT     = "Must we?",
+--     FUELED  = "Excessive.",
+-- }
+
+-- ─── CHARACTER SELECT SCREEN TEXT ────────────────────────────────────────────
+-- These strings appear on the character select screen.
+-- DST looks for these in STRINGS.CHARACTER_NAMES and STRINGS.CHARACTER_DESCRIPTIONS.
+-- Note: If AddModCharacter handles this automatically, you may not need to set
+-- these manually. Check your DST version.
+
+-- GLOBAL.STRINGS.CHARACTER_NAMES["faye"] = "Faye"
+-- GLOBAL.STRINGS.CHARACTER_DESCRIPTIONS["faye"] = "The shadows call her home."
+
+-- ─── GHOST STRINGS ───────────────────────────────────────────────────────────
+-- What Faye says as a ghost when she examines things.
+-- (Optional — ghost strings are rarely implemented in mods but can be added here)
+
+-- GLOBAL.STRINGS.CHARACTERS.FAYE.DESCRIBE_GHOST = {
+--     SPIDER = "Even dead, I can sense them.",
+--     FIREPIT = { LIT = "A ghost near fire. Poetic." },
+-- }
+
+-- ─── NOTES FOR ART REPLACEMENT ───────────────────────────────────────────────
+-- When custom art is ready, add these assets to modmain.lua's Assets table
+-- and update the OverrideSymbol / SetBuild / SetBank calls in the prefab files:
+--
+-- CHARACTER:
+--   1. Create faye.png (character spritesheet) via Spriter
+--   2. Export to anim/faye.zip via DST Mod Tools autocompiler
+--   3. Create bigportraits/faye.tex + .xml (320x400)
+--   4. Create images/saveslot_portraits/faye.tex + .xml (200x230)
+--   5. Create images/avatars/avatar_faye.tex + .xml (64x64)
+--   6. Create images/names_txt_icons.tex + .xml
+--   7. Create modicon.tex + .xml (64x64)
+--   8. Add all to Assets = {} in modmain.lua
+--   9. Remove the SetBuild("wendy") override in faye.lua (if added)
+--
+-- SHADOWBLADE:
+--   1. Create shadowblade art, export to anim/swap_shadowblade.zip
+--   2. Create images/inventoryimages/faye_shadowblade.tex + .xml
+--   3. In faye_shadowblade.lua, change:
+--       SetBank("nightsword") → SetBank("shadowblade")
+--       SetBuild("nightsword") → SetBuild("shadowblade")
+--       OverrideSymbol("swap_object", "swap_nightsword", "swap_nightsword")
+--       → OverrideSymbol("swap_object", "swap_shadowblade", "swap_shadowblade")
+--       inventoryitem.atlasname → "images/inventoryimages/faye_shadowblade.xml"
+--       ChangeImageName("nightsword") → ChangeImageName("faye_shadowblade")
+--
+-- TWILIGHT BLINDFOLD:
+--   1. Create blindfold art, export to anim/swap_twilight_blindfold.zip
+--   2. Create images/inventoryimages/faye_twilight_blindfold.tex + .xml
+--   3. In faye_twilight_blindfold.lua, change similarly to above
