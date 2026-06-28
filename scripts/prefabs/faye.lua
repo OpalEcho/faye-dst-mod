@@ -232,9 +232,10 @@ end
 
 local function common_postinit(inst)
     -- Borrow Wendy's art until custom faye.zip is ready.
-    -- MakePlayerCharacter sets the build to "faye", which doesn't exist yet;
-    -- this overrides it so the character can actually render.
+    -- MakePlayerCharacter sets the build to "faye" (nonexistent); override both
+    -- build and bank so the character renders correctly on all clients.
     inst.AnimState:SetBuild("wendy")
+    inst.AnimState:SetBank("wilson")
 
     inst.entity:AddLight()
     inst.Light:SetRadius(NIGHTVISION_RANGE)
