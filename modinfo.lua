@@ -6,7 +6,7 @@
 
 name        = "Faye - The Elven Shadow Warrior"
 description = "An elven warrior who draws power from darkness. Fearless in shadow, weakened by light."
-author      = "YourName"
+author      = "LilithNight"
 version     = "1.0.0"
 
 -- Compatibility
