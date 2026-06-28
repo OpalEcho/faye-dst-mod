@@ -21,18 +21,18 @@ PrefabFiles = {
 }
 
 -- ─── CHARACTER SELECT PORTRAIT REDIRECT ──────────────────────────────────────
--- DST's character select calls SetOvalPortraitTexture("faye") on hover, which
--- looks for bigportraits/faye.xml — a file that doesn't exist yet.
--- We force-require characterutil (which defines the function) then redirect
--- faye -> wendy. pcall makes this a no-op on the dedicated server where
--- characterutil is not available. rawget bypasses strict.lua's __index guard.
-pcall(function()
-    GLOBAL.require("characterutil")
-    local _fn = rawget(GLOBAL, "SetOvalPortraitTexture")
-    if _fn then
-        GLOBAL.SetOvalPortraitTexture = function(image, prefab)
-            if prefab == "faye" then prefab = "wendy" end
-            return _fn(image, prefab)
+-- The lobby screen calls self:SetPortrait("faye") on hover, which eventually
+-- tries to load bigportraits/faye.xml (missing — no custom art yet).
+-- AddClassPostConstruct hooks SetPortrait on the lobby screen and swaps
+-- "faye" -> "wendy" so Wendy's existing portrait is shown instead.
+-- This callback only fires on the client (the server never instantiates
+-- lobbyscreen), so no server-safety guard is needed.
+AddClassPostConstruct("screens/redux/lobbyscreen", function(self)
+    local _SetPortrait = self.SetPortrait
+    if _SetPortrait then
+        self.SetPortrait = function(self2, character, ...)
+            if character == "faye" then character = "wendy" end
+            return _SetPortrait(self2, character, ...)
         end
     end
 end)
