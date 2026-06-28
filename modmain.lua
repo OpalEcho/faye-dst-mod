@@ -74,6 +74,33 @@ GLOBAL.STRINGS.CHARACTERS.GENERIC.DESCRIBE.FAYE_TWILIGHT_BLINDFOLD = {
     "Something about it dulls the harshness of the world.",
 }
 
+-- ─── PORTRAIT / AVATAR REDIRECT ──────────────────────────────────────────────
+-- DST resolves atlas <Texture> paths from the XML's real disk location, not the
+-- virtual FS. So bigportraits/faye.xml's reference to "wendy.tex" fails because
+-- wendy.tex isn't in the mod folder (it's in bigportraits.zip). Intercepting
+-- Image:SetTexture on every widget instance and swapping the three faye paths
+-- for wendy's real base-game paths fixes portraits, save-slot icons, and avatars
+-- before DST ever touches a file. Widgets don't exist on the dedicated server.
+AddClassPostConstruct("widgets/image", function(self)
+    local _SetTexture = self.SetTexture
+    self.SetTexture = function(self2, atlas, tex, ...)
+        if atlas == "bigportraits/faye.xml" then
+            atlas, tex = "bigportraits/wendy.xml", "wendy.tex"
+        elseif atlas == "images/saveslot_portraits/faye.xml" then
+            atlas, tex = "images/saveslot_portraits/wendy.xml", "wendy.tex"
+        elseif atlas == "images/avatars/avatar_faye.xml" then
+            atlas, tex = "images/avatars/avatar_wendy.xml", "avatar_wendy.tex"
+        end
+        return _SetTexture(self2, atlas, tex, ...)
+    end
+end)
+
+-- ─── CHARACTER SELECT STRINGS ────────────────────────────────────────────────
+GLOBAL.STRINGS.CHARACTER_NAMES = GLOBAL.STRINGS.CHARACTER_NAMES or {}
+GLOBAL.STRINGS.CHARACTER_DESCRIPTIONS = GLOBAL.STRINGS.CHARACTER_DESCRIPTIONS or {}
+GLOBAL.STRINGS.CHARACTER_NAMES["faye"]        = "Faye"
+GLOBAL.STRINGS.CHARACTER_DESCRIPTIONS["faye"] = "The shadows know her name."
+
 -- ─── OPTIONAL: Load extra strings file ───────────────────────────────────────
 -- If you add more strings to scripts/strings/faye_strings.lua, uncomment below.
 -- modimport("scripts/strings/faye_strings.lua")
