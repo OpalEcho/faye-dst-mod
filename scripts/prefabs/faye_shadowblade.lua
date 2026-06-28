@@ -49,23 +49,26 @@ local function OnEquip(inst, owner)
     -- When custom art is ready, replace "swap_nightsword" with your own build.
     owner.AnimState:OverrideSymbol("swap_object", "swap_nightsword", "swap_nightsword")
 
-    -- ── Listen for phase changes while equipped ───────────────────────────────
-    -- We save the callback so we can remove it on unequip.
-    inst._on_phase_change = function(world, data)
+    -- ── React to phase changes while equipped ─────────────────────────────────
+    -- WatchWorldState fires on the natural day/dusk/night transition.
+    -- (ListenForEvent("ms_setphase") only fires on forced phase changes, so the
+    -- blade's damage would never have updated during normal play.)
+    -- We save the callback so we can stop watching on unequip.
+    inst._on_phase_change = function(inst, phase)
         if inst.components.weapon then
             inst.components.weapon:SetDamage(GetCurrentDamage())
         end
     end
-    inst:ListenForEvent("ms_setphase", TheWorld, inst._on_phase_change)
+    inst:WatchWorldState("phase", inst._on_phase_change)
 end
 
 local function OnUnequip(inst, owner)
     -- ── Remove the Night Sword swap sprite ───────────────────────────────────
     owner.AnimState:ClearOverrideSymbol("swap_object")
 
-    -- ── Stop listening for phase changes ─────────────────────────────────────
+    -- ── Stop watching phase changes ──────────────────────────────────────────
     if inst._on_phase_change then
-        inst:RemoveEventCallback("ms_setphase", inst._on_phase_change, TheWorld)
+        inst:StopWatchingWorldState("phase", inst._on_phase_change)
         inst._on_phase_change = nil
     end
 end

@@ -20,12 +20,53 @@ PrefabFiles = {
     "faye_twilight_blindfold",
 }
 
+-- ─── SPEECH ──────────────────────────────────────────────────────────────────
+-- DST does NOT auto-load a mod character's speech file. We must require it
+-- ourselves and assign it to STRINGS.CHARACTERS.<NAME-UPPER>. Without this,
+-- STRINGS.CHARACTERS.FAYE stays nil and every custom quote, the death quote,
+-- and all examine overrides silently do nothing.
+GLOBAL.STRINGS.CHARACTERS.FAYE = GLOBAL.require("speech_faye")
+
+-- ─── CHARACTER SELECT SCREEN STRINGS ─────────────────────────────────────────
+-- Keys are the LOWERCASE prefab name. AddModCharacter does not set these for us.
+GLOBAL.STRINGS.CHARACTER_NAMES.faye        = "Faye"
+GLOBAL.STRINGS.CHARACTER_TITLES.faye       = "The Elven Shadow Warrior"
+GLOBAL.STRINGS.CHARACTER_DESCRIPTIONS.faye =
+    "*Sees in the dark and cannot be harmed by Charlie\n" ..
+    "*Stronger at night and in caves, weakened by daylight\n" ..
+    "*Gains sanity in darkness, loses it in the sun"
+GLOBAL.STRINGS.CHARACTER_QUOTES.faye       = "\"The shadows call me home.\""
+
 -- ─── CHARACTER REGISTRATION ──────────────────────────────────────────────────
 -- Registers Faye on the character select screen.
 -- "FEMALE" sets her pronouns in shared world speech and announcements.
--- DST auto-loads scripts/speech_faye.lua and assigns it to
--- STRINGS.CHARACTERS.FAYE when the language system initialises.
 AddModCharacter("faye", "FEMALE")
+
+-- ─── SLEEP RESTRICTION ───────────────────────────────────────────────────────
+-- Faye can ONLY sleep during the day. The player entity has no "sleeper"
+-- component to wrap, so we hook the "sleepingbag" component (used by tents and
+-- bedrolls) and refuse the sleep when Faye tries it while it is dark.
+AddComponentPostInit("sleepingbag", function(self)
+    local _DoSleep = self.DoSleep
+    function self:DoSleep(sleeper, ...)
+        if sleeper ~= nil and sleeper:HasTag("faye") then
+            local world = GLOBAL.TheWorld
+            local is_dark = world ~= nil and (
+                world:HasTag("cave")
+                or (world.state and (world.state.isnight or world.state.isdusk))
+            )
+            if is_dark then
+                if sleeper.components.talker ~= nil then
+                    sleeper.components.talker:Say(
+                        "Sleep while the shadows play? No. Rest is for daylight."
+                    )
+                end
+                return  -- refuse: no sleep at night / dusk / in caves
+            end
+        end
+        return _DoSleep(self, sleeper, ...)
+    end
+end)
 
 -- ─── ITEM NAMES ──────────────────────────────────────────────────────────────
 -- STRINGS.NAMES keys must be UPPERCASE versions of the prefab name.

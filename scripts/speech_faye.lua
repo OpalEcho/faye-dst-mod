@@ -94,9 +94,8 @@ return {
         NIGHTLIGHT = {
             GENERIC = "This one I can tolerate.",
         },
-        MINERHAT = {
-            GENERIC = "A miner's convenience. Not mine.",
-        },
+        -- (MINERHAT examine string lives in the ARMOR section below — a single
+        --  entry, since duplicate Lua table keys silently keep only the last.)
 
         -- ─── TOOLS ─────────────────────────────────────────────────
         AXE = {
@@ -114,7 +113,7 @@ return {
         SHOVEL = {
             GENERIC = "The earth remembers what it buries.",
         },
-        GOLDENSSHOVEL = {
+        GOLDENSHOVEL = {
             GENERIC = "Faster digging. Fewer memories disturbed.",
         },
         RAZOR = {
@@ -303,9 +302,8 @@ return {
         ICEBOX = {
             GENERIC = "Cold preserves. I know this.",
         },
-        CROCKPOT = {
-            GENERIC = "Patience rewarded.",
-        },
+        -- (CROCKPOT examine string lives in the CROCKPOT section above. Note the
+        --  real prefab is "cookpot" — COOKPOT — so that is the key the game uses.)
         TENT = {
             GENERIC = "For daylight rest. When the sun demands it.",
         },

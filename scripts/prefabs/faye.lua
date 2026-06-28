@@ -3,12 +3,20 @@
 -- ============================================================
 -- FAYE - The Elven Shadow Warrior
 -- An elven warrior naturally bonded to darkness:
---   * Permanent night vision (light emitter, Charlie immune)
+--   * Permanent night vision (light source, Charlie immune)
 --   * Powered by darkness: damage up, sanity gain, hunger slows
 --   * Weakened by daylight: sanity drain, hunger spike, damage down
 --   * 25% damage reduction (innate armor)
 --   * 10% life steal on hit
---   * Can ONLY sleep during daytime (darkness is too inviting)
+--   * Can ONLY sleep during daytime (handled in modmain.lua)
+--
+-- NOTE ON STRUCTURE:
+-- player_common's MakePlayerCharacter BUILDS the entity for us. We must
+-- NOT call CreateEntity / AddTransform ourselves and we must NOT call
+-- MakePlayerCharacter(inst, ...). Instead we hand it two callbacks:
+--   common_postinit(inst) -> runs on BOTH client and server
+--   master_postinit(inst) -> runs on the SERVER / host only
+-- and we RETURN MakePlayerCharacter(...).
 -- ============================================================
 
 local MakePlayerCharacter = require "prefabs/player_common"
@@ -17,7 +25,16 @@ local assets = {
     Asset("SCRIPT", "scripts/prefabs/faye.lua"),
 }
 
+-- Prefabs this character depends on at spawn (its starting items).
+local prefabs = {
+    "faye_shadowblade",
+    "faye_twilight_blindfold",
+}
+
 -- ─── STARTING INVENTORY ──────────────────────────────────────────────────────
+-- Passed to MakePlayerCharacter as the starting_inventory argument.
+-- player_common gives these ONLY on a brand-new spawn and persists the
+-- inventory afterwards, so they are not duplicated on respawn / reconnect.
 local start_inv = {
     "faye_shadowblade",
     "faye_twilight_blindfold",
@@ -56,12 +73,12 @@ local BOSS_SAY_COOLDOWN    = 30
 
 -- Night vision light (subtle purple glow — also prevents Charlie targeting)
 -- Range 3, falloff 0.7, intensity 0.4 → dim but enough to keep Charlie away
-local NIGHTVISION_RANGE    = 3
-local NIGHTVISION_FALLOFF  = 0.7
+local NIGHTVISION_RANGE     = 3
+local NIGHTVISION_FALLOFF   = 0.7
 local NIGHTVISION_INTENSITY = 0.4
-local NIGHTVISION_R        = 0.4   -- subtle purple color
-local NIGHTVISION_G        = 0.0
-local NIGHTVISION_B        = 0.6
+local NIGHTVISION_R         = 0.4   -- subtle purple color
+local NIGHTVISION_G         = 0.0
+local NIGHTVISION_B         = 0.6
 
 -- ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -171,10 +188,11 @@ end
 
 -- ─── LIFE STEAL ──────────────────────────────────────────────────────────────
 -- Heals Faye for 10% of every hit she lands.
--- "onattackother" fires on the player entity (not the weapon) after each attack.
+-- "onhitother" fires on the attacker AFTER damage resolves and carries
+-- data.damage (unlike "onattackother", which fires at swing time and may not).
 
 local function SetupLifeSteal(inst)
-    inst:ListenForEvent("onattackother", function(inst, data)
+    inst:ListenForEvent("onhitother", function(inst, data)
         if not data then return end
         if not (inst.components.health and not inst.components.health:IsDead()) then return end
 
@@ -207,76 +225,23 @@ local function TickSanity(inst)
     -- Dusk: neutral — no sanity change during dusk
 end
 
--- ─── SLEEP RESTRICTION ───────────────────────────────────────────────────────
--- Faye can ONLY sleep during the day (her weakness — sunlight gives her rest).
--- At night the shadows are too alive to ignore.
+-- ─── COMMON POSTINIT (runs on BOTH client and server) ────────────────────────
+-- The night-vision light lives here so it exists on every machine: that way it
+-- renders for all players AND Faye's own LightWatcher reads her as "in light",
+-- which is what actually stops Charlie / the grue from attacking her.
 
-local function SetupSleepRestriction(inst)
-    if not inst.components.sleeper then return end
-
-    local original_GoToSleep = inst.components.sleeper.GoToSleep
-    inst.components.sleeper.GoToSleep = function(self, ...)
-        if IsDark() then
-            -- Can't sleep — it's night / we're in a cave
-            if inst.components.talker then
-                inst.components.talker:Say(
-                    "Sleep while the shadows play? No. Rest is for daylight."
-                )
-            end
-            return false
-        end
-        -- It's daytime — allowed to sleep
-        return original_GoToSleep(self, ...)
-    end
+local function common_postinit(inst)
+    inst.entity:AddLight()
+    inst.Light:SetRadius(NIGHTVISION_RANGE)
+    inst.Light:SetFalloff(NIGHTVISION_FALLOFF)
+    inst.Light:SetIntensity(NIGHTVISION_INTENSITY)
+    inst.Light:SetColour(NIGHTVISION_R, NIGHTVISION_G, NIGHTVISION_B)
+    inst.Light:Enable(true)
 end
 
--- ─── NIGHT VISION LIGHT ──────────────────────────────────────────────────────
--- Adds a subtle personal light source to Faye.
--- Effect 1: Prevents Charlie from targeting her (she always has "enough light").
--- Effect 2: Provides a dim purple glow so she can see in dark areas.
--- Effect 3: Does NOT replace the need for torches if other players are present.
+-- ─── MASTER POSTINIT (runs on the SERVER / host only) ────────────────────────
 
-local function SetupNightVision(inst)
-    inst:AddComponent("lightemitter")
-    inst.components.lightemitter:SetLight(
-        NIGHTVISION_RANGE,
-        NIGHTVISION_FALLOFF,
-        NIGHTVISION_INTENSITY
-    )
-    inst.components.lightemitter:SetColour(
-        NIGHTVISION_R,
-        NIGHTVISION_G,
-        NIGHTVISION_B
-    )
-    inst.components.lightemitter:Enable(true)
-end
-
--- ─── MAIN PREFAB FUNCTION ────────────────────────────────────────────────────
-
-local function fn()
-    local inst = CreateEntity()
-
-    -- Standard DST player entity setup (ORDER MATTERS — do not rearrange)
-    inst.entity:AddTransform()
-    inst.entity:AddAnimState()
-    inst.entity:AddSoundEmitter()
-    inst.entity:AddDynamicShadow()
-    inst.entity:AddNetwork()
-
-    -- Apply the base player character framework:
-    -- locomotion, inventory, combat, health, hunger, sanity, crafting, etc.
-    MakePlayerCharacter(inst, assets)
-
-    -- ── Mark network setup complete ──────────────────────────────────────────
-    -- Everything ABOVE this line runs on BOTH server and clients.
-    -- Everything BELOW runs ONLY on the server / host.
-    inst.entity:SetPristine()
-    if not TheWorld.ismastersim then
-        return inst
-    end
-
-    -- ── SERVER-ONLY SETUP ────────────────────────────────────────────────────
-
+local function master_postinit(inst)
     -- Custom tag so items can check "is my owner Faye?"
     inst:AddTag("faye")
 
@@ -290,50 +255,46 @@ local function fn()
     -- Our periodic task handles her custom inverted sanity system instead.
     inst.components.sanity.neg_aura_mult = 0
 
-    -- ── NIGHT VISION + CHARLIE IMMUNITY ─────────────────────────────────────
-    -- Personal light → prevents Charlie attack logic, faint purple glow.
-    SetupNightVision(inst)
-
     -- ── BLINDFOLD FLAG ──────────────────────────────────────────────────────
-    -- Set by faye_twilight_blindfold.lua when equipped / unequipped.
-    -- Used by TickSanity to reduce daytime sanity drain.
+    -- Set by faye_twilight_blindfold.lua's OnEquip/OnUnequip. Used by TickSanity
+    -- to reduce daytime sanity drain. On game load the inventory re-equips items
+    -- and re-fires OnEquip, so this flag is restored without manual save/load.
     inst._blindfold_equipped = false
 
     -- ── INITIAL PHASE STATS ──────────────────────────────────────────────────
     UpdatePhaseStats(inst)
 
-    -- ── PHASE CHANGE LISTENER ────────────────────────────────────────────────
-    inst:ListenForEvent("ms_setphase", TheWorld, function(world, data)
+    -- ── PHASE CHANGE WATCHER ─────────────────────────────────────────────────
+    -- WatchWorldState fires on the actual day/dusk/night transition (the
+    -- "ms_setphase" event is an inbound command and does NOT fire on the
+    -- natural clock cycle, which is why the previous version never updated).
+    inst:WatchWorldState("phase", function(inst, phase)
         UpdatePhaseStats(inst)
-
-        -- Announce the transition
-        if data and data.phase then
-            if data.phase == "night" then
-                SayFaye(inst, "ANNOUNCE_NIGHT")
-            elseif data.phase == "day" then
-                SayFaye(inst, "ANNOUNCE_DAY")
-            end
-            -- Dusk: no announcement (neutral transition)
+        if phase == "night" then
+            SayFaye(inst, "ANNOUNCE_NIGHT")
+        elseif phase == "day" then
+            SayFaye(inst, "ANNOUNCE_DAY")
         end
+        -- Dusk: no announcement (neutral transition)
     end)
 
     -- ── FULL MOON ────────────────────────────────────────────────────────────
-    inst:ListenForEvent("ms_fullmoon", TheWorld, function()
-        SayFaye(inst, "ANNOUNCE_FULLMOON")
+    inst:WatchWorldState("isfullmoon", function(inst, isfullmoon)
+        if isfullmoon then
+            SayFaye(inst, "ANNOUNCE_FULLMOON")
+        end
     end)
 
     -- ── CAVE SPAWN ANNOUNCE ──────────────────────────────────────────────────
-    -- The cave is a separate server shard. When Faye migrates to it, she
-    -- spawns fresh on that shard. Detect this and announce "Sanctuary."
+    -- The cave is a separate server shard. When Faye migrates to it she spawns
+    -- fresh on that shard. UpdatePhaseStats already treats caves as dark.
     if TheWorld:HasTag("cave") then
-        UpdatePhaseStats(inst)  -- Cave is always dark — apply night stats
         inst:DoTaskInTime(2.0, function()
             SayFaye(inst, "ANNOUNCE_CAVE")
         end)
     end
 
     -- ── BOSS KILL ANNOUNCE ───────────────────────────────────────────────────
-    -- Fires when Faye lands the killing blow on an epic (boss) enemy.
     -- The "killed" event fires on the attacker with data.victim = the dead entity.
     inst._boss_say_time = -999
     inst:ListenForEvent("killed", function(inst, data)
@@ -348,8 +309,7 @@ local function fn()
     end)
 
     -- ── REVIVE FROM GHOST ────────────────────────────────────────────────────
-    -- Fires when the player respawns after being a ghost.
-    inst:ListenForEvent("respawnfromghost", function()
+    inst:ListenForEvent("respawnfromghost", function(inst)
         SayFaye(inst, "ANNOUNCE_REVIVE")
     end)
 
@@ -362,50 +322,10 @@ local function fn()
     -- ── PERIODIC SANITY ──────────────────────────────────────────────────────
     inst:DoPeriodicTask(SANITY_TICK, TickSanity)
 
-    -- ── SLEEP RESTRICTION ────────────────────────────────────────────────────
-    SetupSleepRestriction(inst)
-
-    -- ── SAVE / LOAD ──────────────────────────────────────────────────────────
-    -- start_given: prevents starting items from being given on every respawn.
-    -- We use a local variable captured by the OnLoad/OnSave/DoTaskInTime closures.
-    local start_given = false
-
-    inst.OnLoad = function(inst, data)
-        if data then
-            if data.start_given ~= nil then
-                start_given = data.start_given
-            end
-            if data.blindfold_equipped ~= nil then
-                inst._blindfold_equipped = data.blindfold_equipped
-            end
-        end
-    end
-
-    inst.OnSave = function(inst, data)
-        data.start_given        = start_given
-        data.blindfold_equipped = inst._blindfold_equipped or false
-    end
-
-    -- ── STARTING ITEMS ───────────────────────────────────────────────────────
-    -- DoTaskInTime(0, ...) fires at the start of the NEXT frame.
-    -- By that time, OnLoad will have run (if this is a saved game),
-    -- setting start_given = true, so we don't duplicate items on load.
-    inst:DoTaskInTime(0, function()
-        if not start_given and inst.components.inventory then
-            start_given = true
-            for _, prefabname in ipairs(start_inv) do
-                local item = SpawnPrefab(prefabname)
-                if item then
-                    inst.components.inventory:GiveItem(item)
-                else
-                    print("[FAYE MOD] WARNING: Could not spawn starting item: " .. tostring(prefabname))
-                end
-            end
-        end
-    end)
-
-    return inst
+    -- Sleep restriction (Faye can only sleep in daylight) is implemented in
+    -- modmain.lua via AddComponentPostInit("sleepingbag", ...), because the
+    -- player entity has no "sleeper" component to wrap.
 end
 
 -- ─── REGISTER ────────────────────────────────────────────────────────────────
-return Prefab("faye", fn, assets)
+return MakePlayerCharacter("faye", prefabs, assets, common_postinit, master_postinit, start_inv)
