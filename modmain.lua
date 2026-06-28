@@ -7,17 +7,16 @@
 -- ============================================================
 
 -- ─── ASSETS ──────────────────────────────────────────────────────────────────
--- bigportraits/faye.xml is a placeholder atlas that references wendy.tex from
--- the base game. This stops the "Could not find bigportraits/faye.xml" crash
--- on the character select screen. Replace with real art when it's ready.
--- Asset declarations for placeholder XMLs are intentionally omitted.
--- Declaring them as Asset("ATLAS", ...) causes DST to preload them at the C++
--- level using real filesystem paths, where wendy.tex can't be found (it lives
--- in databundles/bigportraits.zip). That load failure breaks network replica
--- registration and crashes on AllocReplica. The XML files still sit in the mod
--- folder and are resolved on-demand via the virtual filesystem (which can reach
--- wendy.tex in bigportraits.zip) when the character select screen requests them.
-Assets = {}
+-- All three placeholder atlases borrow Wendy's art. The textures they reference
+-- (wendy.tex, avatars.tex, saveslot_portraits.tex) live in this mod folder so
+-- they're accessible via the real filesystem when DST preloads them here.
+-- AddModCharacter auto-registers avatar_faye.xml as a required asset; if that
+-- atlas has an invalid handle the C++ replica system crashes (AllocReplica).
+Assets = {
+    Asset("ATLAS", "bigportraits/faye.xml"),
+    Asset("ATLAS", "images/avatars/avatar_faye.xml"),
+    Asset("ATLAS", "images/saveslot_portraits/faye.xml"),
+}
 
 -- ─── PREFAB SCRIPTS TO LOAD ──────────────────────────────────────────────────
 -- DST looks for these in scripts/prefabs/<name>.lua (inside this mod folder).
@@ -73,27 +72,6 @@ GLOBAL.STRINGS.CHARACTERS.GENERIC.DESCRIBE.FAYE_TWILIGHT_BLINDFOLD = {
     "It's woven from something soft and dark.",
     "Something about it dulls the harshness of the world.",
 }
-
--- ─── PORTRAIT / AVATAR REDIRECT ──────────────────────────────────────────────
--- DST resolves atlas <Texture> paths from the XML's real disk location, not the
--- virtual FS. So bigportraits/faye.xml's reference to "wendy.tex" fails because
--- wendy.tex isn't in the mod folder (it's in bigportraits.zip). Intercepting
--- Image:SetTexture on every widget instance and swapping the three faye paths
--- for wendy's real base-game paths fixes portraits, save-slot icons, and avatars
--- before DST ever touches a file. Widgets don't exist on the dedicated server.
-AddClassPostConstruct("widgets/image", function(self)
-    local _SetTexture = self.SetTexture
-    self.SetTexture = function(self2, atlas, tex, ...)
-        if atlas == "bigportraits/faye.xml" then
-            atlas, tex = "bigportraits/wendy.xml", "wendy.tex"
-        elseif atlas == "images/saveslot_portraits/faye.xml" then
-            atlas, tex = "images/saveslot_portraits/wendy.xml", "wendy.tex"
-        elseif atlas == "images/avatars/avatar_faye.xml" then
-            atlas, tex = "images/avatars/avatar_wendy.xml", "avatar_wendy.tex"
-        end
-        return _SetTexture(self2, atlas, tex, ...)
-    end
-end)
 
 -- ─── CHARACTER SELECT STRINGS ────────────────────────────────────────────────
 GLOBAL.STRINGS.CHARACTER_NAMES = GLOBAL.STRINGS.CHARACTER_NAMES or {}

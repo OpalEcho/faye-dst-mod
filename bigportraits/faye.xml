@@ -1,6 +1,6 @@
 <Atlas>
 	<Texture filename="wendy.tex" />
 	<Elements>
-		<Element name="faye.tex" u1="0" u2="1" v1="0" v2="1" />
+		<Element name="faye.tex" u1="0.0" u2="0.546875" v1="0.296875" v2="1.0" />
 	</Elements>
 </Atlas>
