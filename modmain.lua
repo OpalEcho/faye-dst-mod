@@ -25,10 +25,13 @@ PrefabFiles = {
 -- looks for bigportraits/faye.xml — a file that doesn't exist yet (placeholder
 -- art build). Redirect faye -> wendy so it uses Wendy's existing portrait
 -- instead of crashing. Remove this block when custom bigportraits art is ready.
-local _SetOvalPortraitTexture = GLOBAL.SetOvalPortraitTexture
-GLOBAL.SetOvalPortraitTexture = function(image, prefab)
-    if prefab == "faye" then prefab = "wendy" end
-    return _SetOvalPortraitTexture(image, prefab)
+-- Guard: this function only exists on the client, not the dedicated server.
+if GLOBAL.SetOvalPortraitTexture ~= nil then
+    local _SetOvalPortraitTexture = GLOBAL.SetOvalPortraitTexture
+    GLOBAL.SetOvalPortraitTexture = function(image, prefab)
+        if prefab == "faye" then prefab = "wendy" end
+        return _SetOvalPortraitTexture(image, prefab)
+    end
 end
 
 -- ─── CHARACTER REGISTRATION ──────────────────────────────────────────────────
