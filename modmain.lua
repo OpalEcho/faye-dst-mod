@@ -7,10 +7,12 @@
 -- ============================================================
 
 -- ─── ASSETS ──────────────────────────────────────────────────────────────────
--- Empty for now. We reference ONLY base-game art files (nightsword, mole_hat),
--- which DST already has loaded. Do NOT list files that don't exist in your mod
--- folder here — that's what caused "Dedicated server failed to start."
-Assets = {}
+-- bigportraits/faye.xml is a placeholder atlas that references wendy.tex from
+-- the base game. This stops the "Could not find bigportraits/faye.xml" crash
+-- on the character select screen. Replace with real art when it's ready.
+Assets = {
+    Asset("ATLAS", "bigportraits/faye.xml"),
+}
 
 -- ─── PREFAB SCRIPTS TO LOAD ──────────────────────────────────────────────────
 -- DST looks for these in scripts/prefabs/<name>.lua (inside this mod folder).
@@ -19,23 +21,6 @@ PrefabFiles = {
     "faye_shadowblade",
     "faye_twilight_blindfold",
 }
-
--- ─── CHARACTER SELECT PORTRAIT REDIRECT ──────────────────────────────────────
--- The lobby screen calls self:SetPortrait("faye") on hover, which eventually
--- tries to load bigportraits/faye.xml (missing — no custom art yet).
--- AddClassPostConstruct hooks SetPortrait on the lobby screen and swaps
--- "faye" -> "wendy" so Wendy's existing portrait is shown instead.
--- This callback only fires on the client (the server never instantiates
--- lobbyscreen), so no server-safety guard is needed.
-AddClassPostConstruct("screens/redux/lobbyscreen", function(self)
-    local _SetPortrait = self.SetPortrait
-    if _SetPortrait then
-        self.SetPortrait = function(self2, character, ...)
-            if character == "faye" then character = "wendy" end
-            return _SetPortrait(self2, character, ...)
-        end
-    end
-end)
 
 -- ─── CHARACTER REGISTRATION ──────────────────────────────────────────────────
 -- Registers Faye on the character select screen.
