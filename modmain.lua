@@ -12,6 +12,8 @@
 -- on the character select screen. Replace with real art when it's ready.
 Assets = {
     Asset("ATLAS", "bigportraits/faye.xml"),
+    Asset("ATLAS", "images/avatars/avatar_faye.xml"),
+    Asset("ATLAS", "images/saveslot_portraits/faye.xml"),
 }
 
 -- ─── PREFAB SCRIPTS TO LOAD ──────────────────────────────────────────────────
