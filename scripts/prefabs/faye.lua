@@ -237,7 +237,10 @@ local function common_postinit(inst)
     inst.AnimState:SetBuild("wendy")
     inst.AnimState:SetBank("wilson")
 
-    inst.entity:AddLight()
+    -- MakePlayerCharacter already calls inst.entity:AddLight() and stores it in
+    -- inst.Light before common_postinit runs. Calling AddLight() a second time
+    -- silently corrupts the entity and causes AllocReplica Invalid Prefab. Just
+    -- configure the Light component that is already attached.
     inst.Light:SetRadius(NIGHTVISION_RANGE)
     inst.Light:SetFalloff(NIGHTVISION_FALLOFF)
     inst.Light:SetIntensity(NIGHTVISION_INTENSITY)
