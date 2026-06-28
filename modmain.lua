@@ -22,17 +22,20 @@ PrefabFiles = {
 
 -- ─── CHARACTER SELECT PORTRAIT REDIRECT ──────────────────────────────────────
 -- DST's character select calls SetOvalPortraitTexture("faye") on hover, which
--- looks for bigportraits/faye.xml — a file that doesn't exist yet (placeholder
--- art build). Redirect faye -> wendy so it uses Wendy's existing portrait
--- instead of crashing. Remove this block when custom bigportraits art is ready.
--- Guard: this function only exists on the client, not the dedicated server.
-if GLOBAL.SetOvalPortraitTexture ~= nil then
-    local _SetOvalPortraitTexture = GLOBAL.SetOvalPortraitTexture
-    GLOBAL.SetOvalPortraitTexture = function(image, prefab)
-        if prefab == "faye" then prefab = "wendy" end
-        return _SetOvalPortraitTexture(image, prefab)
+-- looks for bigportraits/faye.xml — a file that doesn't exist yet.
+-- We force-require characterutil (which defines the function) then redirect
+-- faye -> wendy. pcall makes this a no-op on the dedicated server where
+-- characterutil is not available. rawget bypasses strict.lua's __index guard.
+pcall(function()
+    GLOBAL.require("characterutil")
+    local _fn = rawget(GLOBAL, "SetOvalPortraitTexture")
+    if _fn then
+        GLOBAL.SetOvalPortraitTexture = function(image, prefab)
+            if prefab == "faye" then prefab = "wendy" end
+            return _fn(image, prefab)
+        end
     end
-end
+end)
 
 -- ─── CHARACTER REGISTRATION ──────────────────────────────────────────────────
 -- Registers Faye on the character select screen.
