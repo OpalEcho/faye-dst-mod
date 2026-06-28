@@ -231,6 +231,11 @@ end
 -- which is what actually stops Charlie / the grue from attacking her.
 
 local function common_postinit(inst)
+    -- Borrow Wendy's art until custom faye.zip is ready.
+    -- MakePlayerCharacter sets the build to "faye", which doesn't exist yet;
+    -- this overrides it so the character can actually render.
+    inst.AnimState:SetBuild("wendy")
+
     inst.entity:AddLight()
     inst.Light:SetRadius(NIGHTVISION_RANGE)
     inst.Light:SetFalloff(NIGHTVISION_FALLOFF)
